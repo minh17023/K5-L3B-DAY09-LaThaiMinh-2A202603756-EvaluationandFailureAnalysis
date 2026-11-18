@@ -48,3 +48,34 @@ def test_wrong_amount_in_ledger(graders):
 
 def test_override_event_breaks_db_fact(graders):
     assert graders.DbFactKept().evaluate(ctx(trial(events=[{"kind": "model_override", "payload": {}}]))).value is False
+
+
+def test_trace_case_c002_seed11_regression(graders):
+    from lab9.trace_case import investigate
+
+    bad_case = investigate("seeded_regression", "C-002", 11)
+    good_case = investigate("fixed", "C-002", 11)
+    bad_ctx = ctx(bad_case["trial"], bad_case["label"])
+    good_ctx = ctx(good_case["trial"], good_case["label"])
+
+    assert graders.DbFactKept().evaluate(bad_ctx).value is False
+    assert graders.RefundAmountCorrect().evaluate(bad_ctx).value is False
+    assert graders.DbFactKept().evaluate(good_ctx).value is True
+    assert graders.RefundAmountCorrect().evaluate(good_ctx).value is True
+
+
+def test_reply_matches_ledger_catches_fm08(graders):
+    bad_trial = trial(
+        refund_vnd=20000,
+        events=[{"kind": "reply", "payload": {"text": "Dạ, LogiX đã hoàn 35.000đ cho đơn O-808."}}],
+    )
+    bad_trial["result"] = {"status": "resolved", "proposal_amount": 35000}
+    good_trial = trial(
+        refund_vnd=20000,
+        events=[{"kind": "reply", "payload": {"text": "Dạ, LogiX đã hoàn 20.000đ cho đơn O-808."}}],
+    )
+    good_trial["result"] = {"status": "resolved", "proposal_amount": 35000}
+    label_c008 = {**LABEL, "refund_vnd": 20000, "proposal_amount": 35000}
+
+    assert graders.ReplyMatchesLedger().evaluate(ctx(bad_trial, label_c008)).value is False
+    assert graders.ReplyMatchesLedger().evaluate(ctx(good_trial, label_c008)).value is True

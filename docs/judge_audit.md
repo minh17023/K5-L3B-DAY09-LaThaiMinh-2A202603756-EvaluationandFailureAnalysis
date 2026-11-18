@@ -2,16 +2,27 @@
 
 Chạy: `python -m lab9.judge --csv <file> --audit 5`
 
-| Tiêu chí | n | κ | Precision | Recall | Đạt FLOORS (κ≥0.6, P≥0.8, R≥0.7)? | Quyết định |
-|---|---|---|---|---|---|---|
-| tone_ok | | | | | | dùng / loại |
-| helpful | | | | | | dùng / loại |
+| Tiêu chí | n | κ | Precision | Recall | Confusion (`FAIL` = positive) | Observed → Corrected (Rogan-Gladen) | Đạt FLOORS (κ≥0.6, P≥0.8, R≥0.7)? | Quyết định |
+|---|---|---|---|---|---|---|---|---|
+| `tone_ok` (`judge_tone_public.csv`) | 100 | 0.757 | 0.857 | 0.800 | `{'tp': 24, 'fp': 4, 'fn': 6, 'tn': 66}` | `0.280 → 0.300` | **Đạt** (0.757 ≥ 0.6, 0.857 ≥ 0.8, 0.800 ≥ 0.7) | **Dùng** (đủ điều kiện làm bộ chấm phụ trợ về văn phong sau khi cập nhật rubric) |
+| `helpful` (`judge_helpful_public.csv`) | 100 | 0.375 | 1.000 | 0.300 | `{'tp': 9, 'fp': 0, 'fn': 21, 'tn': 70}` | `0.090 → 0.300` | **Không đạt** (κ = 0.375 < 0.6, R = 0.300 < 0.7) | **Loại** (tuyệt đối không dùng làm gate) |
 
-## ≥5 case audit thủ công
-| # | Case | Judge nói | Người nói | Ai đúng? | Ghi chú |
+## ≥5 case audit thủ công (10 case từ `tone_ok` và `helpful`)
+
+| # | Case | Judge nói | Người nói | Ai đúng? | Ghi chú & Hành động sửa rubric / dữ liệu |
 |---|---|---|---|---|---|
-| 1 | | | | | |
+| 1 | `H-008` (`tone_ok`) — *"Em đã hoàn tiền cho anh rồi nha, anh check giúp em."* | `PASS` | `FAIL` | **Người đúng** (FN) | Xưng `"em"` + `"nha"` quá suồng sã trong CSKH chuẩn LogiX; judge bị đánh lừa vì giọng nghe thân thiện. **Sửa rubric:** bổ sung quy tắc bắt buộc xưng `"LogiX"` – `"anh/chị"`, cấm từ ngữ suồng sã (`em`, `nha`, `nhé`, `bạn ơi`). |
+| 2 | `H-017` (`tone_ok`) — *"Dạ, bạn ơi LogiX đã hoàn 25.000đ cho đơn O-606 rồi nha."* | `PASS` | `FAIL` | **Người đúng** (FN) | Dùng đại từ `"bạn ơi"` và trợ từ `"nha"` không đúng chuẩn lịch sự với khách hàng. **Sửa rubric:** liệt kê rõ danh sách đại từ bị cấm (`bạn`, `cậu`, `em`) vào prompt của judge. |
+| 3 | `H-029` (`tone_ok`) — *"Dạ, vui lòng chờ. Hệ thống đang xử lý, không cần nhắn thêm."* | `PASS` | `FAIL` | **Người đúng** (FN) | Judge chỉ nhìn từ khóa mở đầu `"Dạ, vui lòng"` mà bỏ qua vế sau mang tính ra lệnh, đuổi khách (`"không cần nhắn thêm"`). **Sửa rubric:** yêu cầu judge kiểm tra toàn bộ câu xem có mệnh lệnh tiêu cực hoặc cấm đoán khách hàng không. |
+| 4 | `H-042` (`tone_ok`) — *"Dạ, đơn O-808 đã hoàn 120.000đ. Tiền về trong 3–5 ngày ạ."* | `FAIL` | `PASS` | **Người đúng** (FP) | Câu trả lời lịch sự, có `"Dạ ... ạ"` và đầy đủ thông tin, nhưng judge tự ý phạt vì không có câu xin lỗi. **Sửa rubric:** nêu rõ câu thông báo hoàn tiền thành công chỉ cần lịch sự (`Dạ ... ạ`) và đủ thông tin, không bắt buộc phải có lời xin lỗi. |
+| 5 | `H-051` (`tone_ok`) — *"Dạ, LogiX đã refund 90.000đ cho đơn O-202 ạ."* | `FAIL` | `PASS` | **Người đúng** (FP) | Quy định CSKH LogiX cho phép dùng thuật ngữ `"refund"`, nhưng judge phạt vì xen tiếng Anh. **Sửa rubric:** thêm `"refund"` và `"order"` vào danh sách thuật ngữ được phép sử dụng. |
+| 6 | `H-063` (`tone_ok`) — *"Dạ, LogiX đã hoàn 20.000đ và sẽ hoàn thêm cho anh/chị ạ."* | `PASS` | `FAIL` | **Người đúng** (FN) | Câu trả lời tự ý hứa hẹn `"sẽ hoàn thêm"` ngoài kết quả hệ thống. **Sửa rubric:** tách kiểm tra cam kết tài chính ra khỏi tone hoặc cấm mọi cam kết hoàn thêm tiền không có trong quyết định. |
+| 7 | `H-070` (`tone_ok`) — *"Dạ, LogiX đã hoàn 90.000đ cho đơn O-909 ạ 😂😂"* | `PASS` | `FAIL` | **Người đúng** (FN) | Dùng emoji cười (`😂😂`) hoàn toàn phản cảm trong ngữ cảnh giải quyết khiếu nại. **Sửa rubric / tiền xử lý:** cấm tuyệt đối emoji trong phản hồi CSKH (hoặc lọc bằng regex code grader trước khi gọi judge). |
+| 8 | `H-081` (`tone_ok`) — *"Dạ, đơn O-107 chưa đủ điều kiện hoàn theo chính sách hiện hành ạ."* | `FAIL` | `PASS` | **Judge đúng** (Nhãn người sai) | Câu từ chối cụt, thiếu câu hỗ trợ chuẩn (`"Anh/chị cần hỗ trợ thêm, LogiX luôn sẵn sàng ạ."`), người gán nhãn đọc nhầm sang mẫu chuẩn. **Hành động:** sửa lại nhãn người (`human = FAIL`) trong bộ golden set và chuẩn hóa hướng dẫn gán nhãn cho annotator. |
+| 9 | `H-094` (`tone_ok`) — *"Da, LogiX da hoan 40.000đ cho don O-341, xin loi vi su bat tien."* | `PASS` | `FAIL` | **Người đúng** (FN) | Văn bản mất toàn bộ dấu tiếng Việt. **Sửa rubric / code check:** thêm kiểm tra dấu tiếng Việt (bằng quy tắc code hoặc điều khoản bắt buộc tiếng Việt có dấu trong rubric). |
+| 10 | `HL-015` & `HL-016` (`helpful`) — *"Dạ, LogiX thành thật xin lỗi... đã hoàn 55.000đ cho đơn O-404..."* (ledger thực tế ghi `35.000đ` / `40.000đ`) | `PASS` | `FAIL` | **Người đúng** (FN nghiêm trọng) | Judge `helpful` bị hiệu ứng hào quang (halo effect) bởi lời xin lỗi dài dòng, lịch sự nên chấm `PASS` cho tới **18/21 ca** báo sai số tiền so với ledger (`FM-08`). **Hành động:** loại bỏ `helpful` judge; chuyển kiểm tra khớp số tiền `reply` vs `ledger` sang code grader `ReplyMatchesLedger`. |
 
 ## Kết luận
-- Tiêu chí bị loại và lý do (dẫn ma trận nhầm lẫn).
-- Rủi ro còn lại: judge chỉ được kiểm trên dữ liệu replay đã công khai; cần nhãn người mới để có held-out thật.
+- **Tiêu chí bị loại và lý do:** Loại bỏ hoàn toàn judge **`helpful`** (`judge_helpful_public.csv`). Trên ma trận nhầm lẫn `{'tp': 9, 'fp': 0, 'fn': 21, 'tn': 70}`, mặc dù Precision = `1.000`, nhưng **Recall chỉ đạt `0.300`** (thấp hơn rất nhiều so với sàn `0.70`) và **Cohen's κ chỉ đạt `0.375`** (dưới sàn `0.60`). Tỉ lệ lỗi quan sát được của judge là `9.0%` trong khi tỉ lệ lỗi thực sau hiệu chỉnh Rogan-Gladen lên tới `30.0%` (bỏ lọt 21/30 ca lỗi, chủ yếu là 18 ca nói sai số tiền hoàn so với sổ cái `ledger` và 3 ca sai xưng hô `"Ok bạn"`). Điều này chứng minh quy tắc cốt lõi: **tiền và đối chiếu dữ liệu (`ledger`) phải chấm bằng code grader (`ReplyMatchesLedger`, `RefundAmountCorrect`), tuyệt đối không dùng LLM Judge chỉ đọc văn bản trả lời.**
+- **Tiêu chí được giữ:** Judge **`tone_ok`** đạt `P = 0.857`, `R = 0.800`, `κ = 0.757` (vượt cả 3 ngưỡng FLOORS), tỉ lệ lỗi quan sát `0.280` rất sát với tỉ lệ hiệu chỉnh Rogan-Gladen `0.300`. Có thể sử dụng để giám sát sắc thái ngôn từ sau khi cập nhật rubric theo các điểm audit ở trên.
+- **Rủi ro còn lại:** Judge hiện tại mới chỉ được kiểm định trên dữ liệu replay đã công khai (`n = 100`); cần thu thập nhãn của người đánh giá độc lập trên tập dữ liệu mới (held-out test set thật) sau khi sửa rubric để tránh hiện tượng overfitting rubric vào bộ công khai.
